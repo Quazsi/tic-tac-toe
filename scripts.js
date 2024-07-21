@@ -1,14 +1,18 @@
 const gameBoard = (function() {
-    const board = [
-        ["","",""],
-        ["","",""],
-        ["","",""]
-        ];
-    
-    let gameOver = false;    
+const createEmptyBoard = () => [
+    ["","",""],
+    ["","",""],
+    ["","",""]
+];
+
+    let board = createEmptyBoard();
     
     const makeMove = (row, col, marking) => {
         board[row][col] = marking;
+    };
+
+    const resetBoard = () => {
+        board = createEmptyBoard();
     };
 
     const printBoard = () => {
@@ -52,52 +56,137 @@ const gameBoard = (function() {
     return {
         makeMove,
         printBoard,
-        checkWinner
+        checkWinner,
+        resetBoard
     }
   })();
 
   //Create player object
   //Players have names, scores, markers
-  function createUser (name) {
+  function createUser (name, marker) {
     const playerName = name;
+    const playerMarker = String(marker);
     let score = 0;
+    
     const getScore = () => score;
     const increaseScore = () => score++;
-    return { name, getScore, increaseScore };
+    return { name, getScore, increaseScore, playerMarker };
   }
   //Create game
-  //Gamestarts, game ends, game checks for wins
-  //Game checks for ties
-  //Game updates player scores after it is done
-  function game(){
-   //Create gameboard
-
-  //Create players
-    player1 = createUser("Adam");
-    player2 = createUser("Becca");
+  function game(player1Name, player2Name ) {
+   
+    // Create players
+    const player1 = createUser(player1Name, "X");
+    const player2 = createUser(player2Name, "O");
     let currentPlayer = player1;
-    let turn = 1;
-  //Make moves, check wins
-    while(true){
-        gameBoard.makeMove(
-        prompt(currentPlayer.name +" Row"), 
-        prompt(currentPlayer.name +" Col"),
-        prompt(currentPlayer +" Marker"));
-        gameBoard.printBoard();
+    let gameOver = false;    
 
-        if(gameBoard.checkWinner()){
-            window.alert(currentPlayer + "WINS!");
-            break;
+    //Set player names on board
+    document.getElementById('player1_name').textContent = player1Name;
+    document.getElementById('player2_name').textContent = player2Name;
+
+        function resetGame() {
+
+            // Clear the game board
+            gameBoard.resetBoard();
+
+            gameInstance.gameOver = false;
+        
+            // Clear the board display
+            const squares = document.querySelectorAll('.square');
+            squares.forEach(square => {
+                square.textContent = '';
+
+            });
         }
-        if(turn == 9){
-            window.alert("It's a tie");
-            break;
-        }
-        currentPlayer = currentPlayer === player1 ? player2 : player1;
-        ++turn;
+        
+    function updateScores() {
+        document.getElementById('player1_name').textContent = player1Name;
+        document.getElementById('player2_name').textContent = player2Name;
+        document.getElementById('player1-score').textContent = player1.getScore();
+        document.getElementById('player2-score').textContent = player2.getScore();
     }
-  //update scores, refresh board
+
+    function getCurrentPlayer() {
+        return currentPlayer;
+    }
+
+    function switchCurrentPlayer() {
+        currentPlayer = currentPlayer === player1 ? player2 : player1;
+    }
+
+    return { getCurrentPlayer, switchCurrentPlayer, resetGame, updateScores, player1, player2,gameOver };
+}
+
+
+// Display controller to handle the game display and interactions
+function displayController(gameInstance) {
+    const displayBoard = document.getElementById("board");
+    const squares = displayBoard.querySelectorAll('.square');
+    const newGameButton = document.querySelector('#newGame button');
+
+    newGameButton.addEventListener('click', () => {
+        gameInstance.resetGame();
+    });
+
+    // Function to handle square click
+    function handleSquareClick(event) {
+        const square = event.target;
+
+        // If no marking, get the current player's marking
+        if (square.textContent == "" && gameInstance.gameOver != true) {
+            // Add the player's marking to the display
+            square.textContent = gameInstance.getCurrentPlayer().playerMarker; 
+
+            // Make move on game board
+            const row = parseInt(square.getAttribute('data-row'));
+            const col = parseInt(square.getAttribute('data-col'));
+            gameBoard.makeMove(row, col, gameInstance.getCurrentPlayer().playerMarker);
+
+            // Check for a winner / tie
+            if (gameBoard.checkWinner()) {
+                window.alert(gameInstance.getCurrentPlayer().name + " WINS!");
+                gameInstance.getCurrentPlayer().increaseScore();
+                gameInstance.updateScores();
+                gameInstance.gameOver = true;
+            } else   
+            if (Array.from(squares).every(square => square.textContent !== "")) {
+                window.alert("It's a tie");
+                gameInstance.gameOver = true;
+            } else {
+                // Switch the current player
+                gameInstance.switchCurrentPlayer();
+            }
+        }
+    }
+
+    // Add event listeners to each square
+    squares.forEach(square => {
+        square.addEventListener('click', handleSquareClick);
+    });
+}
 
 
 
-  }
+document.addEventListener('DOMContentLoaded', (event) => {
+    const form = document.getElementById('player-form');
+    
+    form.addEventListener('submit', (event) => {
+        // Prevent the form from submitting the traditional way
+        event.preventDefault(); 
+        
+        const player1Name = document.getElementById('player1-name').value;
+        const player2Name = document.getElementById('player2-name').value;
+        
+        // Initialize the game with player names
+        gameInstance = game(player1Name, player2Name);
+        displayController(gameInstance);
+        
+        // Hide and show
+        document.getElementById('form-container').style.display = 'none';
+        document.getElementById('score-board').style.display = 'flex'; 
+        document.getElementById('board').style.display = 'grid';
+        document.getElementById('newGame').style.display = 'flex'; 
+        document.getElementById('header').style.display = 'none';
+    });
+});
